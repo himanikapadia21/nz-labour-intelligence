@@ -1,0 +1,96 @@
+version: 2
+
+models:
+  - name: mart_regional_dashboard
+    description: >
+      Power BI-ready regional employment dashboard table.
+      One row per NZ region per quarter.
+      Includes employment rate, unemployment rate, participation rate,
+      filled jobs, gross earnings, and national benchmark comparisons.
+    columns:
+      - name: period_start_date
+        description: "First day of the quarter"
+        tests: [not_null]
+      - name: region
+        description: "NZ regional council area"
+        tests: [not_null]
+      - name: employment_rate_pct
+        description: "Regional employment rate as a percentage"
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 100
+              config:
+                severity: warn
+      - name: unemployment_rate_pct
+        description: "Regional unemployment rate as a percentage"
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 30
+              config:
+                severity: warn
+      - name: mart_refreshed_at
+        tests: [not_null]
+
+  - name: mart_wage_analysis
+    description: >
+      Wage trends by sector (private vs public) per quarter.
+      Includes YoY growth rates, sector premium, and growth category labels.
+      One row per quarter.
+    columns:
+      - name: period_start_date
+        tests: [not_null]
+      - name: private_hourly_wage_nzd
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 10
+              max_value: 500
+              config:
+                severity: warn
+      - name: public_hourly_wage_nzd
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 10
+              max_value: 500
+              config:
+                severity: warn
+      - name: growth_category
+        tests:
+          - accepted_values:
+              values:
+                - 'Strong Growth (5%+)'
+                - 'Moderate Growth (2.5-5%)'
+                - 'Slow Growth (0-2.5%)'
+                - 'Wage Decline'
+                - 'Unknown'
+
+  - name: mart_industry_wages
+    description: >
+      Industry-level hourly wage breakdown per quarter. One row per industry + quarter.
+      Includes wage rank, wage band, YoY growth, and annualised salary estimates.
+      Used for the industry wage bar chart in Power BI.
+    columns:
+      - name: period_start_date
+        tests: [not_null]
+      - name: industry_anzsic
+        description: "ANZSIC industry division name"
+        tests: [not_null]
+      - name: avg_hourly_wage_nzd
+        description: "Average hourly wage in NZD for this industry and quarter"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 5
+              max_value: 500
+              config:
+                severity: warn
+      - name: wage_band
+        tests:
+          - accepted_values:
+              values:
+                - 'High Wage (Top 25%)'
+                - 'Middle Wage'
+                - 'Low Wage (Bottom 25%)'
+      - name: mart_refreshed_at
+        tests: [not_null]

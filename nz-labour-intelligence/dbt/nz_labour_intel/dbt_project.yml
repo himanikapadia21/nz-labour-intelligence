@@ -1,0 +1,54 @@
+name: 'nz_labour_intel'
+version: '1.0.0'
+config-version: 2
+
+profile: 'nz_labour_intel'
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+# ── Model configurations ──────────────────────────────────────────────────────
+models:
+  nz_labour_intel:
+
+    staging:
+      +schema: STAGING
+      +materialized: view          # Views — no storage cost, always fresh
+      +tags: ['staging']
+
+    intermediate:
+      +schema: INTERMEDIATE
+      +materialized: table         # Tables — faster for joins
+      +tags: ['intermediate']
+      +post-hook:
+        - "GRANT SELECT ON {{ this }} TO ROLE ANALYST_ROLE"
+
+    mart:
+      +schema: MART
+      +materialized: table
+      +tags: ['mart']
+      +post-hook:
+        - "GRANT SELECT ON {{ this }} TO ROLE ANALYST_ROLE"
+        - "GRANT SELECT ON {{ this }} TO ROLE REPORTER_ROLE"
+
+# ── Variable defaults ─────────────────────────────────────────────────────────
+vars:
+  # Only load data from this year onwards (useful for testing with less data)
+  start_year: 2015
+  # NZ regions to include in mart models
+  nz_regions:
+    - 'Auckland Region'
+    - 'Wellington Region'
+    - 'Canterbury Region'
+    - 'Waikato Region'
+    - 'Bay of Plenty Region'
+    - 'Otago Region'
+    - 'Hawke''s Bay Region'
+    - 'Manawatū-Whanganui Region'

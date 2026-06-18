@@ -1,0 +1,132 @@
+name: NZ Labour Intelligence — Daily Pipeline
+
+on:
+  schedule:
+    - cron: '0 19 * * *'
+
+  workflow_dispatch:
+    inputs:
+      setup_advanced:
+        description: 'Run advanced Snowflake setup (first run only)'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  PYTHON_VERSION: '3.11'
+  DBT_VERSION: '1.9.4'
+
+jobs:
+  ingest:
+    name: Ingest Stats NZ Data
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          cd ingestion
+          pip install -r requirements.txt
+
+      - name: Create data directory
+        run: mkdir -p ingestion/data/raw ingestion/logs
+
+      - name: Run ingestion pipeline
+        env:
+          SNOWFLAKE_ACCOUNT:   ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER:      ${{ secrets.SNOWFLAKE_USER }}
+          SNOWFLAKE_PASSWORD:  ${{ secrets.SNOWFLAKE_PASSWORD }}
+          SNOWFLAKE_ROLE:      ENGINEER_ROLE
+          SNOWFLAKE_WAREHOUSE: NZ_LABOUR_WH
+          SNOWFLAKE_DATABASE:  NZ_LABOUR_DB
+          SNOWFLAKE_SCHEMA:    RAW
+        run: |
+          cd ingestion
+          SETUP_FLAG=""
+          if [ "${{ inputs.setup_advanced }}" == "true" ]; then
+            SETUP_FLAG="--setup-advanced"
+          fi
+          python run_pipeline.py $SETUP_FLAG
+
+      - name: Upload pipeline logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ingestion-logs-${{ github.run_id }}
+          path: ingestion/logs/
+          retention-days: 7
+
+  dbt_transform:
+    name: dbt Transform & Test
+    runs-on: ubuntu-latest
+    needs: ingest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dbt
+        run: pip install dbt-snowflake==${{ env.DBT_VERSION }}
+
+      - name: Install dbt packages
+        working-directory: dbt/nz_labour_intel
+        run: dbt deps
+
+      - name: dbt run
+        working-directory: dbt/nz_labour_intel
+        env:
+          SNOWFLAKE_ACCOUNT:  ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER:     ${{ secrets.SNOWFLAKE_USER }}
+          SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
+        run: dbt run --target prod --profiles-dir .
+
+      - name: dbt test
+        working-directory: dbt/nz_labour_intel
+        env:
+          SNOWFLAKE_ACCOUNT:  ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER:     ${{ secrets.SNOWFLAKE_USER }}
+          SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
+        run: dbt test --target prod --profiles-dir .
+
+      - name: dbt docs generate
+        working-directory: dbt/nz_labour_intel
+        env:
+          SNOWFLAKE_ACCOUNT:  ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER:     ${{ secrets.SNOWFLAKE_USER }}
+          SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
+        run: dbt docs generate --target prod --profiles-dir .
+
+      - name: Upload dbt artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dbt-artifacts-${{ github.run_id }}
+          path: dbt/nz_labour_intel/target/
+          retention-days: 7
+
+  notify_on_failure:
+    name: Notify Failure
+    runs-on: ubuntu-latest
+    needs: [ingest, dbt_transform]
+    if: failure()
+
+    steps:
+      - name: Log failure
+        run: |
+          echo "Pipeline failed. Check logs at ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

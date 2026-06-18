@@ -1,0 +1,72 @@
+version: 2
+
+models:
+  - name: int_regional_employment
+    description: >
+      Intermediate model combining HLFS quarterly rates with monthly Employment
+      Indicators for regional analysis. One row per region + quarter.
+      Pivots the Stats NZ long-format series into analytical columns
+      (employment_rate_pct, unemployment_rate_pct, participation_rate_pct).
+    columns:
+      - name: period_start_date
+        description: "First day of the quarter"
+        tests: [not_null]
+      - name: year_num
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 2000
+              max_value: 2030
+      - name: quarter_num
+        tests:
+          - not_null
+          - accepted_values:
+              values: [1, 2, 3, 4]
+      - name: year_quarter_label
+        description: "Human-readable label e.g. 2025Q4"
+        tests: [not_null]
+      - name: region
+        description: "NZ regional council area name"
+        tests: [not_null]
+      - name: region_tier
+        tests:
+          - accepted_values:
+              values:
+                - 'North Island - Major'
+                - 'North Island - Regional'
+                - 'South Island - Major'
+                - 'National'
+                - 'Other'
+      - name: employment_rate_pct
+        description: "Regional employment rate (% of working-age population)"
+      - name: unemployment_rate_pct
+        description: "Regional unemployment rate"
+
+  - name: int_wage_trends
+    description: >
+      Intermediate model for wage growth analytics. One row per quarter + sector.
+      Calculates YoY growth using LAG, rolling 4-quarter averages, and the
+      public vs private sector wage differential.
+    columns:
+      - name: period_start_date
+        tests: [not_null]
+      - name: year_quarter_label
+        tests: [not_null]
+      - name: private_hourly_wage
+        description: "Average hourly wage in NZD for private sector"
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 5
+              max_value: 500
+              config:
+                severity: warn
+      - name: public_hourly_wage
+        description: "Average hourly wage in NZD for public sector"
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 5
+              max_value: 500
+              config:
+                severity: warn
+      - name: public_vs_private_premium_pct
+        description: "% premium public sector pays over private (can be negative)"

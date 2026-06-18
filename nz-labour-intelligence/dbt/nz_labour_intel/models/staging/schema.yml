@@ -1,0 +1,134 @@
+version: 2
+
+# ── Sources (RAW tables loaded by Python) ────────────────────────────────────
+sources:
+  - name: raw
+    database: NZ_LABOUR_DB
+    schema: RAW
+    description: "Raw Stats NZ data loaded by the Python ingestion pipeline"
+    freshness:
+      warn_after: {count: 100, period: day}
+      error_after: {count: 200, period: day}
+    loaded_at_field: _ingested_at
+
+    tables:
+      - name: RAW_HLFS_EMPLOYMENT
+        description: "Raw Household Labour Force Survey — employment/unemployment by region, age, sex"
+        columns:
+          - name: series_reference
+            description: "Stats NZ time-series code"
+            tests: [not_null]
+          - name: period
+            description: "Quarter period e.g. 2025Q4"
+            tests: [not_null]
+          - name: data_value
+            description: "The data value (rate, count, etc.)"
+
+      - name: RAW_QES_WAGES
+        description: "Raw Quarterly Employment Survey — average earnings by industry and sector"
+        columns:
+          - name: series_reference
+            tests: [not_null]
+          - name: period
+            tests: [not_null]
+          - name: data_value
+            description: "Wage value in NZD"
+
+      - name: RAW_EMPLOYMENT_INDICATORS
+        description: "Raw monthly employment indicators — filled jobs and gross earnings"
+        columns:
+          - name: series_reference
+            tests: [not_null]
+          - name: period
+            tests: [not_null]
+
+# ── Staging models ────────────────────────────────────────────────────────────
+models:
+  - name: stg_hlfs_employment
+    description: >
+      Cleaned and typed Household Labour Force Survey data.
+      One row per series_reference + period combination.
+      Includes derived fields: period_start_date, year_num, quarter_num,
+      is_seasonally_adjusted, is_rate_metric, data_value_actual.
+    columns:
+      - name: series_reference
+        description: "Stats NZ series code — unique per time-series"
+        tests:
+          - not_null
+      - name: period
+        description: "Quarterly period string e.g. 2025Q4"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_match_regex:
+              regex: "^[0-9]{4}Q[1-4]$"
+      - name: period_start_date
+        tests:
+          - not_null
+      - name: year_num
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 2000
+              max_value: 2030
+      - name: quarter_num
+        tests:
+          - not_null
+          - accepted_values:
+              values: [1, 2, 3, 4]
+      - name: data_value
+        description: "Raw data value — may be NULL for suppressed rows"
+      - name: is_seasonally_adjusted
+        tests:
+          - not_null
+          - accepted_values:
+              values: [true, false]
+      - name: units
+        tests:
+          - not_null
+
+  - name: stg_qes_wages
+    description: >
+      Cleaned Quarterly Employment Survey wages data.
+      Includes sector_clean (Private/Public/All Sectors) and wage_frequency (Hourly/Weekly).
+    columns:
+      - name: series_reference
+        tests: [not_null]
+      - name: period
+        tests: [not_null]
+      - name: period_start_date
+        tests: [not_null]
+      - name: wage_nzd
+        description: "Wage in NZD"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 10000
+              config:
+                severity: warn
+      - name: sector_clean
+        tests:
+          - accepted_values:
+              values: ['Private', 'Public', 'All Sectors', 'Other']
+      - name: wage_frequency
+        tests:
+          - accepted_values:
+              values: ['Hourly', 'Weekly', 'Other']
+
+  - name: stg_employment_indicators
+    description: >
+      Cleaned monthly employment indicators — filled jobs and gross earnings
+      by industry and region. More current than quarterly HLFS (monthly update).
+    columns:
+      - name: series_reference
+        tests: [not_null]
+      - name: period
+        tests: [not_null]
+      - name: period_start_date
+        tests: [not_null]
+      - name: measure_clean
+        tests:
+          - accepted_values:
+              values: ['Filled Jobs', 'Gross Earnings']
+              config:
+                severity: warn

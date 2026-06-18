@@ -1,0 +1,39 @@
+# Environment
+.env
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# Data (raw CSVs — don't commit large files)
+ingestion/data/
+
+# Logs
+ingestion/logs/
+*.log
+
+# dbt
+dbt/*/target/
+dbt/*/dbt_packages/
+dbt/*/logs/
+
+# dbt profiles (contains credentials)
+dbt/*/profiles.yml
+
+# Power BI (binary files, use version control in Power BI service instead)
+*.pbix
+
+# macOS
+.DS_Store
+
+# VSCode
+.vscode/
+*.code-workspace
