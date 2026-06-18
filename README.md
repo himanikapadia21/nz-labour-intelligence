@@ -10,8 +10,8 @@
 ---
 
 ## 📸 Project Screenshot
+<img width="1877" height="867" alt="ss" src="https://github.com/user-attachments/assets/50627348-dbea-40e7-b286-198a7d9a28f7" />
 
-![dbt Lineage Graph](assets/lineage_graph.png)
 *dbt lineage graph — from raw Stats NZ sources through staging and intermediate layers to Power BI-ready mart models*
 
 ---
