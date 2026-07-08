@@ -1,0 +1,11 @@
+[flake8]
+max-line-length = 250
+extend-ignore =
+    E203,
+    W503,
+    E402,
+    E731,
+    W291,
+    W293,
+    W391
+exclude = .venv,.git,__pycache__,dbt/nz_labour_intel/dbt_packages,dbt/nz_labour_intel/target

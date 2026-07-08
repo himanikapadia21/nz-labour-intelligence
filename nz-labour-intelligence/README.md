@@ -3,10 +3,33 @@
 > End-to-end modern data stack — ingesting public NZ employment & wage data from Stats NZ into Snowflake, transforming with dbt, and visualising in Power BI. Orchestrated daily with GitHub Actions.
 
 ![Pipeline](https://img.shields.io/badge/pipeline-GitHub%20Actions-2088FF?logo=github-actions&logoColor=white)
+[![CI](https://github.com/himanikapadia21/nz-labour-intelligence/actions/workflows/ci.yml/badge.svg)](https://github.com/himanikapadia21/nz-labour-intelligence/actions/workflows/ci.yml)
 ![Snowflake](https://img.shields.io/badge/warehouse-Snowflake-29B5E8?logo=snowflake&logoColor=white)
 ![dbt](https://img.shields.io/badge/transform-dbt-FF694B?logo=dbt&logoColor=white)
 ![Python](https://img.shields.io/badge/ingest-Python%203.11-3776AB?logo=python&logoColor=white)
 ![Power BI](https://img.shields.io/badge/viz-Power%20BI-F2C811?logo=powerbi&logoColor=black)
+![Docker](https://img.shields.io/badge/container-Docker-2496ED?logo=docker&logoColor=white)
+![Terraform](https://img.shields.io/badge/IaC-Terraform-7B42BC?logo=terraform&logoColor=white)
+
+---
+
+## Infrastructure
+
+- **Docker** — the dashboard and the ingestion pipeline each have their own
+  image ([`Dockerfile`](Dockerfile), [`ingestion/Dockerfile`](ingestion/Dockerfile)).
+  Run the dashboard with `docker compose up`, or run a one-off ingestion pass
+  with `docker compose --profile ingestion run ingestion`.
+- **Terraform** — the warehouse, database, schemas, and role hierarchy are
+  codified in [`terraform/`](terraform/), alongside the SQL scripts in
+  [`snowflake/`](snowflake/) that originally created them by hand. Terraform
+  is now the source of truth for provisioning these objects going forward —
+  see [`terraform/README.md`](terraform/README.md).
+- **CI** — [`.github/workflows/ci.yml`](.github/workflows/ci.yml) lints the
+  Python, builds both Docker images, validates the Terraform config, and
+  parses the dbt project on every push and pull request. This runs
+  separately from the daily data pipeline
+  ([`.github/workflows/daily_pipeline.yml`](.github/workflows/daily_pipeline.yml)),
+  which ingests, transforms, and tests the actual data on a schedule.
 
 ---
 

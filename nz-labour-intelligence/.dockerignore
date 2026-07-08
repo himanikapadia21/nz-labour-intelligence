@@ -1,0 +1,7 @@
+.git
+.venv
+data/raw/*.zip
+dbt/nz_labour_intel/target/
+dbt/nz_labour_intel/dbt_packages/
+.env
+__pycache__

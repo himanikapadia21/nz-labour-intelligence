@@ -1,0 +1,125 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+env:
+  PYTHON_VERSION: '3.11'
+  DBT_VERSION: '1.9.4'
+  TERRAFORM_VERSION: '1.9.8'
+
+jobs:
+  lint:
+    name: Lint (flake8)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install flake8
+        run: pip install flake8
+
+      - name: Run flake8
+        working-directory: nz-labour-intelligence
+        run: flake8 app.py ingestion/*.py
+
+  docker-build:
+    name: Docker build (app + ingestion)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build dashboard image
+        run: |
+          docker build -f nz-labour-intelligence/Dockerfile \
+            -t nz-labour-app:ci nz-labour-intelligence
+
+      - name: Build ingestion image
+        run: |
+          docker build -f nz-labour-intelligence/ingestion/Dockerfile \
+            -t nz-labour-ingestion:ci nz-labour-intelligence/ingestion
+
+  terraform-validate:
+    name: Terraform fmt & validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: terraform fmt -check
+        working-directory: nz-labour-intelligence/terraform
+        run: terraform fmt -check -recursive
+
+      - name: terraform init (no backend, no real credentials)
+        working-directory: nz-labour-intelligence/terraform
+        run: terraform init -backend=false -input=false
+
+      - name: terraform validate
+        working-directory: nz-labour-intelligence/terraform
+        run: terraform validate
+
+  dbt-parse:
+    name: dbt parse
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dbt-snowflake
+        run: pip install dbt-snowflake==${{ env.DBT_VERSION }}
+
+      - name: Write CI dbt profile
+        # dbt parse only compiles the project — it never opens a Snowflake
+        # connection, so these values just need to be well-formed, not real.
+        run: |
+          mkdir -p ~/.dbt
+          cat > ~/.dbt/profiles.yml <<'EOF'
+          nz_labour_intel:
+            target: ci
+            outputs:
+              ci:
+                type: snowflake
+                account: dummy_account
+                user: dummy_user
+                password: dummy_password
+                role: ENGINEER_ROLE
+                database: NZ_LABOUR_DB
+                warehouse: NZ_LABOUR_WH
+                schema: STAGING
+                threads: 1
+          EOF
+
+      - name: dbt deps
+        working-directory: nz-labour-intelligence/dbt/nz_labour_intel
+        run: dbt deps
+
+      - name: dbt parse
+        working-directory: nz-labour-intelligence/dbt/nz_labour_intel
+        run: dbt parse --target ci

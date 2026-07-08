@@ -15,7 +15,6 @@ we download the published ZIP files directly. URLs are updated in config.py
 each quarter — a one-line change.
 """
 
-import io
 import zipfile
 from pathlib import Path
 
@@ -68,7 +67,6 @@ def _download_file(url: str, dest_path: Path) -> None:
     logger.info(f"Downloading: {url}")
     with requests.get(url, stream=True, timeout=120) as r:
         r.raise_for_status()
-        total = int(r.headers.get("content-length", 0))
         downloaded = 0
         with open(dest_path, "wb") as f:
             for chunk in r.iter_content(chunk_size=8192):

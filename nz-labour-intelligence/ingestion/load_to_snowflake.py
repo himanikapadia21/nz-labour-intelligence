@@ -16,10 +16,6 @@ Features:
   - Connection pooling via context manager
 """
 
-import csv
-import io
-import os
-import tempfile
 from contextlib import contextmanager
 from datetime import datetime, timezone
 

@@ -1,5 +1,4 @@
 import streamlit as st
-import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
 import snowflake.connector
@@ -84,6 +83,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ── Snowflake connection ────────────────────────────────────────────────────────
+
+
 @st.cache_resource
 def get_connection():
     return snowflake.connector.connect(
@@ -96,12 +97,15 @@ def get_connection():
         schema="RAW"
     )
 
+
 @st.cache_data(ttl=3600)
 def run_query(sql):
     conn = get_connection()
     return pd.read_sql(sql, conn)
 
 # ── Load data ──────────────────────────────────────────────────────────────────
+
+
 @st.cache_data(ttl=3600)
 def load_regional_unemployment():
     return run_query("""
@@ -123,6 +127,7 @@ def load_regional_unemployment():
         ORDER BY PERIOD DESC, unemployment_rate DESC
     """)
 
+
 @st.cache_data(ttl=3600)
 def load_national_trend():
     return run_query("""
@@ -140,6 +145,7 @@ def load_national_trend():
         ORDER BY PERIOD ASC
     """)
 
+
 @st.cache_data(ttl=3600)
 def load_wage_trends():
     return run_query("""
@@ -156,6 +162,7 @@ def load_wage_trends():
             AND DATA_VALUE IS NOT NULL
         ORDER BY PERIOD DESC
     """)
+
 
 @st.cache_data(ttl=3600)
 def load_employment_by_region_latest():
@@ -178,17 +185,18 @@ def load_employment_by_region_latest():
         ORDER BY unemployment_rate DESC
     """)
 
+
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("### NZ Labour Intelligence")
     st.markdown("---")
-    
+
     page = st.radio(
         "Navigate",
         ["🏠 Overview", "🗺️ Regional Story", "💰 Wage Story", "📈 Trends Over Time"],
         label_visibility="collapsed"
     )
-    
+
     st.markdown("---")
     st.markdown("**Data source**")
     st.markdown("Stats NZ — HLFS, QES")
@@ -211,7 +219,7 @@ if page == "🏠 Overview":
 
     # KPI cards
     col1, col2, col3, col4 = st.columns(4)
-    
+
     with col1:
         st.metric(
             label="🔴 National Unemployment",
@@ -288,7 +296,7 @@ if page == "🏠 Overview":
         df_latest = load_employment_by_region_latest()
 
     if not df_latest.empty:
-        colors = ['#f85149' if r == df_latest['UNEMPLOYMENT_RATE'].max() 
+        colors = ['#f85149' if r == df_latest['UNEMPLOYMENT_RATE'].max()
                   else '#3fb950' if r == df_latest['UNEMPLOYMENT_RATE'].min()
                   else '#58a6ff' for r in df_latest['UNEMPLOYMENT_RATE']]
 
@@ -324,7 +332,7 @@ elif page == "🗺️ Regional Story":
         df_regional = load_regional_unemployment()
 
     regions = sorted(df_regional['REGION'].unique())
-    
+
     col1, col2 = st.columns([1, 3])
     with col1:
         selected_region = st.selectbox("Select a region", regions, index=regions.index('Auckland') if 'Auckland' in regions else 0)
@@ -542,7 +550,7 @@ elif page == "📈 Trends Over Time":
             yaxis=dict(gridcolor='#21262d', title="Unemployment Rate (%)"),
             height=450, margin=dict(t=20, b=20),
             legend=dict(bgcolor='#1c2128', bordercolor='#30363d', orientation='h',
-                       yanchor='bottom', y=1.02, xanchor='right', x=1)
+                        yanchor='bottom', y=1.02, xanchor='right', x=1)
         )
         st.plotly_chart(fig, use_container_width=True)
 
@@ -567,4 +575,3 @@ elif page == "📈 Trends Over Time":
             before gradually falling back toward 4.5% by 2027.</p>
         </div>
         """, unsafe_allow_html=True)
-

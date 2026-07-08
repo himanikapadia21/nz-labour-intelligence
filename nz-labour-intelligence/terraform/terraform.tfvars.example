@@ -1,0 +1,8 @@
+# Copy to terraform.tfvars and fill in real values. terraform.tfvars is
+# gitignored — never commit real Snowflake credentials.
+
+snowflake_account  = "xy12345.ap-southeast-2"
+snowflake_user     = "YOUR_ACCOUNTADMIN_USER"
+snowflake_password = "CHANGE_ME"
+snowflake_role     = "ACCOUNTADMIN"
+warehouse_size     = "X-SMALL"

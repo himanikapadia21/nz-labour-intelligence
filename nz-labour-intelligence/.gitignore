@@ -31,6 +31,14 @@ dbt/*/profiles.yml
 # Power BI (binary files, use version control in Power BI service instead)
 *.pbix
 
+# Terraform
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/terraform.tfvars
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/crash.log
+
 # macOS
 .DS_Store
 
