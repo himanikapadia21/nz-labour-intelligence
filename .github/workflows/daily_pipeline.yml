@@ -34,11 +34,11 @@ jobs:
 
       - name: Install dependencies
         run: |
-          cd ingestion
+          cd nz-labour-intelligence/ingestion
           pip install -r requirements.txt
 
       - name: Create data directory
-        run: mkdir -p ingestion/data/raw ingestion/logs
+        run: mkdir -p nz-labour-intelligence/ingestion/data/raw nz-labour-intelligence/ingestion/logs
 
       - name: Run ingestion pipeline
         env:
@@ -50,7 +50,7 @@ jobs:
           SNOWFLAKE_DATABASE:  NZ_LABOUR_DB
           SNOWFLAKE_SCHEMA:    RAW
         run: |
-          cd ingestion
+          cd nz-labour-intelligence/ingestion
           SETUP_FLAG=""
           if [ "${{ inputs.setup_advanced }}" == "true" ]; then
             SETUP_FLAG="--setup-advanced"
@@ -62,7 +62,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ingestion-logs-${{ github.run_id }}
-          path: ingestion/logs/
+          path: nz-labour-intelligence/ingestion/logs/
           retention-days: 7
 
   dbt_transform:
@@ -85,11 +85,11 @@ jobs:
         run: pip install dbt-snowflake==${{ env.DBT_VERSION }}
 
       - name: Install dbt packages
-        working-directory: dbt/nz_labour_intel
+        working-directory: nz-labour-intelligence/dbt/nz_labour_intel
         run: dbt deps
 
       - name: dbt run
-        working-directory: dbt/nz_labour_intel
+        working-directory: nz-labour-intelligence/dbt/nz_labour_intel
         env:
           SNOWFLAKE_ACCOUNT:  ${{ secrets.SNOWFLAKE_ACCOUNT }}
           SNOWFLAKE_USER:     ${{ secrets.SNOWFLAKE_USER }}
@@ -97,7 +97,7 @@ jobs:
         run: dbt run --target prod --profiles-dir .
 
       - name: dbt test
-        working-directory: dbt/nz_labour_intel
+        working-directory: nz-labour-intelligence/dbt/nz_labour_intel
         env:
           SNOWFLAKE_ACCOUNT:  ${{ secrets.SNOWFLAKE_ACCOUNT }}
           SNOWFLAKE_USER:     ${{ secrets.SNOWFLAKE_USER }}
@@ -105,7 +105,7 @@ jobs:
         run: dbt test --target prod --profiles-dir .
 
       - name: dbt docs generate
-        working-directory: dbt/nz_labour_intel
+        working-directory: nz-labour-intelligence/dbt/nz_labour_intel
         env:
           SNOWFLAKE_ACCOUNT:  ${{ secrets.SNOWFLAKE_ACCOUNT }}
           SNOWFLAKE_USER:     ${{ secrets.SNOWFLAKE_USER }}
@@ -117,7 +117,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: dbt-artifacts-${{ github.run_id }}
-          path: dbt/nz_labour_intel/target/
+          path: nz-labour-intelligence/dbt/nz_labour_intel/target/
           retention-days: 7
 
   notify_on_failure:
