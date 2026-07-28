@@ -1,8 +1,11 @@
 name: NZ Labour Intelligence — Daily Pipeline
 
 on:
-  schedule:
-    - cron: '0 19 * * *'
+  # Scheduled trigger disabled to stop the daily run from waking the Snowflake
+  # warehouse (NZ_LABOUR_WH) and incurring credits while the project is idle.
+  # Re-enable by uncommenting the block below.
+  # schedule:
+  #   - cron: '0 19 * * *'
 
   workflow_dispatch:
     inputs:
